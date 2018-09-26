@@ -79,6 +79,10 @@
 	
 	[[SPTRequest sharedHandler] performRequest:req callback:^(NSError *error, NSURLResponse *response, NSData *data) {
 
+		if (error != nil) {
+			if (block) dispatch_async(dispatch_get_main_queue(), ^{ block(error, nil); });
+			return;
+		}
 		NSError *err = nil;
 		id json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&err];
 		if (err != nil) {
