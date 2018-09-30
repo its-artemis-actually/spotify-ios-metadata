@@ -106,24 +106,19 @@ static NSString * const SPTPlaylistJSONDescriptionKey = @"description";
 + (NSURLRequest *)createRequestForPlaylistWithURI:(NSURL *)uri
 									  accessToken:(NSString *)accessToken
 											error:(NSError **)error {
+	if (![self isPlaylistURI:uri] && ![self isStarredURI:uri]) {
+		[SPTRequest setErrorCode:401 withDescription:@"Invalid Playlist URI" toError:error];
+		return nil;
+	}
 	NSArray *uriComponents = [[uri absoluteString] componentsSeparatedByString:@":"];
 	
-	if (uriComponents.count < 4 ||
-		uriComponents.count > 5) {
-		[SPTRequest setErrorCode:401 withDescription:@"Invalid Playlist URI" toError:error];
-		return nil;
-	}
-	
-	if (![[uriComponents objectAtIndex:0] isEqualToString:@"spotify"] ||
-		![[uriComponents objectAtIndex:1] isEqualToString:@"user"]) {
-		[SPTRequest setErrorCode:401 withDescription:@"Invalid Playlist URI" toError:error];
-		return nil;
-	}
-	
+	// Possible formats:
+	//		1. spotify:user:{userId}:playlist:{playlistId}	[to be discontinued in the future]
+	// 		2. spotify:playlist:{playlistId}				[to replace old format]
 	if (uriComponents.count == 4) {
 		NSString *userName = nil;
 		
-		if (![[uriComponents objectAtIndex:3] isEqualToString:@"starred"]) {
+		if (![self isStarredURI:uri]) {
 			[SPTRequest setErrorCode:401 withDescription:@"Invalid Playlist URI" toError:error];
 			return nil;
 		}
@@ -132,18 +127,11 @@ static NSString * const SPTPlaylistJSONDescriptionKey = @"description";
 		NSString *apiurl = [NSString stringWithFormat:@"https://api.spotify.com/v1/users/%@/starred", userName];
 		return [SPTRequest createRequestForURL:[NSURL URLWithString:apiurl] withAccessToken:accessToken error:error];
 	}
-	else if (uriComponents.count == 5) {
-		NSString *userName = nil;
+	else if (uriComponents.count == 5 || uriComponents.count == 3) {
 		NSString *playlistId = nil;
 		
-		if (![[uriComponents objectAtIndex:3] isEqualToString:@"playlist"]) {
-			[SPTRequest setErrorCode:401 withDescription:@"Invalid Playlist URI" toError:error];
-			return nil;
-		}
-		
-		userName = uriComponents[2];
-		playlistId = uriComponents[4];
-		NSString *apiurl = [NSString stringWithFormat:@"https://api.spotify.com/v1/users/%@/playlists/%@", userName, playlistId];
+		playlistId = uriComponents.lastObject;
+		NSString *apiurl = [NSString stringWithFormat:@"https://api.spotify.com/v1/playlists/%@", playlistId];
 		return [SPTRequest createRequestForURL:[NSURL URLWithString:apiurl] withAccessToken:accessToken error:error];
 	}
 	else {
@@ -192,19 +180,23 @@ static NSString * const SPTPlaylistJSONDescriptionKey = @"description";
 	}
 	
 	NSArray *uriComponents = [[uri absoluteString] componentsSeparatedByString:@":"];
-	if (uriComponents.count != 5) {
+	if (uriComponents.count < 3) {
 		return false;
 	}
 	
+	// Legacy format (currently still need to support, as it's still in use):
+	//			spotify:user:{userId}:playlist:{playlistId}
+	// New format:
+	//			spotify:playlist:{playlistId}
 	if (![uriComponents[0] isEqualToString:@"spotify"]) {
 		return false;
 	}
 	
-	if (![uriComponents[1] isEqualToString:@"user"]) {
+	if (![uriComponents[1] isEqualToString:@"user"] && ![uriComponents[1] isEqualToString:@"playlist"]) {
 		return false;
 	}
 	
-	if (![uriComponents[3] isEqualToString:@"playlist"]) {
+	if (uriComponents.count > 3 && ![uriComponents[3] isEqualToString:@"playlist"]) {
 		return false;
 	}
 	
@@ -233,10 +225,6 @@ static NSString * const SPTPlaylistJSONDescriptionKey = @"description";
 	
 	return true;
 }
-
-
-
-
 
 -(NSArray *)tracksForPlayback {
 	return self.firstTrackPage.items;

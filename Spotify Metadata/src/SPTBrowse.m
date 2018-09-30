@@ -20,7 +20,7 @@
 #import "SPTListPage.h"
 #import "SPTListPage_Internal.h"
 #import "SPTFeaturedPlaylistList.h"
-#import "SPTFeaturedPlaylistList_internal.h"
+#import "SPTFeaturedPlaylistList_Internal.h"
 
 static NSString * const SPTBrowseFeaturedPlaylistsAPIURL = @"https://api.spotify.com/v1/browse/featured-playlists";
 static NSString * const SPTBrowseNewReleasesAPIURL = @"https://api.spotify.com/v1/browse/new-releases";
